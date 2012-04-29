@@ -14,15 +14,12 @@
     (remove comment?
             (map s/trim lines))))
 
-(def first-word-tokenizer
-  (let [first-word #(first (s/split % #"[|,\s]" 2))]
-    [(comp s/lower-case first-word)]))
-
 (defn tokenize
   "Return a (possibly empty) lazy sequence of tokens of str."
   [str]
-  (sequence (re-seq #"\S+" str)))
+  (sequence (re-seq #"\w+" str)))
 
+;; FIXME -- detect that this is unused!!!!
 (defn tokenize-lines
   ([lines] (tokenize-lines tokenize))
   ([lines line-tokenizer] (mapcat line-tokenizer lines)))
@@ -32,7 +29,7 @@
   [uri]
   (let [first-word  #(first (tokenize %))
         keep-first-words #(keep first-word %)]
-    (-> read-lines cleanup-lines keep-first-words)))
+    (-> uri read-lines cleanup-lines keep-first-words)))
 
 
 ;; FIXME -- this is far from accurate
@@ -48,7 +45,7 @@
   ;;
   ;; - vowels: aeiouy
   ;; - consonants: bcdfghjklmnpqrstvwxz
-  (s/split word #"(?<=[aeiouy])(?=.*[aeiouy])"))
+  (s/split word #"(?i)(?<=[aeiouy])(?=.*[aeiouy])"))
 
 (def ^{:doc "A joiner for remixing words"} join-syllables s/join)
 
