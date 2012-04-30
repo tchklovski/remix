@@ -92,12 +92,6 @@
   [words-in remixer]
   (s/capitalize (remix words-in split-by-syllables remixer join-syllables)))
 
-(defn print-n
-  "Presentation utility to print the result of running n times the
-   no-args function f"
-  [n f]
-  (dorun (map println (repeatedly n f))))
-
 ;; ## Sample datasets
 (def wordsets [:hawaiian-places :boys-names :girls-names])
 
@@ -106,20 +100,30 @@
   (let [full-path #(str "data/" (name %) ".txt")]
     (into {} (for [ws wordsets] [ws (full-path ws)]))))
 
-(defn new-word [dataset-name]
-  (remix-words (read-words (dataset-name word-files))
-               (:positional-sampler remixers)))
+(defn new-word
+  "Return a new word for the specified dataset, taking an
+   optinal remixer (defaults to :positional-sampler)"
+  ([dataset-name]
+     (new-word dataset-name :positional-sampler))
+  ([dataset-name remixer-name]
+     (remix-words (read-words (dataset-name word-files))
+                  (remixer-name remixers))))
 
-(defn print-remixes
+(defn print-n
+  "Presentation utility to print the result of running n times the
+   no-args function f"
+  [n f]
+  (dotimes [_ n] (println (f))))
+
+(defn print-new-words
   "Print n remixes of items from dataset-name"
-  [n dataset-name remixer-name]
-  (print-n n #(remix-words (read-words (dataset-name word-files))
-                           (remixer-name remixers))))
+  ([n & args]
+     (print-n n #(apply new-word args))))
 
 (comment
   (new-word :hawaiian-places)
   (new-word :boys-names)
   (new-word :girls-names)
-  (print-remixes 20 :hawaiian-places :positional-sampler)
-  (print-remixes 20 :boys-names :positional-sampler)
-  (print-remixes 20 :girls-names :positional-sampler))
+  (print-new-words 20 :hawaiian-places)
+  (print-new-words 20 :boys-names)
+  (print-new-words 20 :girls-names :positional-sampler))
