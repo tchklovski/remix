@@ -1,5 +1,6 @@
 (ns remix.core
-  (:require [clojure.string :as s]))
+  (:require [clojure.string :as s]
+            [sosueme.io :as io]))
 
 ;; An experiment in frequency analysis and generation.
 ;; Read in a file of words, break them up by eg syllables,
@@ -7,7 +8,10 @@
 
 ;; ## General file and line reading
 (defn read-lines [uri]
-  (-> uri slurp s/split-lines))
+  ;; from Aaron: uncomment the println to see how often a full reprocess is done
+  ;;(println "***read-lines slurp uri" uri)
+  
+  (-> uri io/slurp-cp s/split-lines))
 
 (defn cleanup-lines [lines]
   (let [comment? #(= (first %) \;)]
@@ -101,6 +105,12 @@
 (def word-files
   (let [full-path #(str (first (s/split *file* #"/src/" 2)) "/data/" (name %) ".txt")]
     (into {} (for [ws wordsets] [ws (full-path ws)]))))
+(def word-files2
+  (let [full-path #(str "data/" (name %) ".txt")]
+    (into {} (for [ws wordsets] [ws (full-path ws)]))))
+
+(defn new-word [dataset-name]
+  (remix-words (read-words (dataset-name word-files2)) (:positional-sampler remixers)))
 
 (defn print-remixes
   "Print n remixes of items from dataset-name"
@@ -109,6 +119,9 @@
                            (remixer-name remixers))))
 
 (comment
+  (new-word :hawaiian-places)
+  (new-word :boys-names)
+  (new-word :girls-names)
   (print-remixes 20 :hawaiian-places :positional-sampler)
   (print-remixes 20 :boys-names :positional-sampler)
   (print-remixes 20 :girls-names :positional-sampler))
