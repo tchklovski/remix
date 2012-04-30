@@ -8,9 +8,8 @@
 
 ;; ## General file and line reading
 (defn read-lines [uri]
-  ;; from Aaron: uncomment the println to see how often a full reprocess is done
+  ;; uncomment the println to see how often a full reprocess is done
   ;;(println "***read-lines slurp uri" uri)
-  
   (-> uri io/slurp-cp s/split-lines))
 
 (defn cleanup-lines [lines]
@@ -23,18 +22,12 @@
   [str]
   (sequence (re-seq #"\w+" str)))
 
-;; FIXME -- detect that this is unused!!!!
-(defn tokenize-lines
-  ([lines] (tokenize-lines tokenize))
-  ([lines line-tokenizer] (mapcat line-tokenizer lines)))
-
 (defn read-words
   "Reads in first word of every line of uri (a file or a url -- anything that can be slurped)"
   [uri]
   (let [first-word  #(first (tokenize %))
         keep-first-words #(keep first-word %)]
     (-> uri read-lines cleanup-lines keep-first-words)))
-
 
 ;; FIXME -- this is far from accurate
 ;; Here are some resources:
@@ -103,14 +96,12 @@
 
 ;; See /data/README.md for data sources
 (def word-files
-  (let [full-path #(str (first (s/split *file* #"/src/" 2)) "/data/" (name %) ".txt")]
-    (into {} (for [ws wordsets] [ws (full-path ws)]))))
-(def word-files2
   (let [full-path #(str "data/" (name %) ".txt")]
     (into {} (for [ws wordsets] [ws (full-path ws)]))))
 
 (defn new-word [dataset-name]
-  (remix-words (read-words (dataset-name word-files2)) (:positional-sampler remixers)))
+  (remix-words (read-words (dataset-name word-files))
+               (:positional-sampler remixers)))
 
 (defn print-remixes
   "Print n remixes of items from dataset-name"

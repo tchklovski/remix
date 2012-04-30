@@ -2,5 +2,17 @@
   (:use [remix.core])
   (:use [clojure.test]))
 
-(deftest replace-me ;; FIXME: write
-  (is false "No tests have been written."))
+(deftest test-split-by-syllables
+  (are [in out]
+       (= (split-by-syllables in) out)
+
+       "car" ["car"]
+       "hero" ["he" "ro"]
+       ;; known issues (google "define x" to see syllables)
+       ;; "mary" ["mar" "y"]
+       ;; "police" ["po" "li" "ce"]
+       ;; "fireworks" ["fire" "works"]
+       ))
+
+(deftest test-new-word
+  (is (string? (new-word :hawaiian-places))))
