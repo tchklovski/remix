@@ -7,7 +7,7 @@ simple experiment in remixing items to generate plausible sounding new ones (lik
 see remix.clj for "print-n" part
 
 ## Source Documentation
-also (create) and see marginalia docs...
+Source [doc](./docs/uberdoc.html) using Marginalia
 
 ## License
 

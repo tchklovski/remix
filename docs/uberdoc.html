@@ -3029,31 +3029,32 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>remix -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">remix</h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>an experiment in generating plausible-sounding sequences, like place names, inspired by https://github.com/dirtyvagabond (Aaron Crow)</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.3.0</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#remix.core">remix.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#remix.core" name="remix.core"><h1 class="project-name">remix.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.3.0</td></tr><tr><td class="dep-name">factual/sosueme</td><td class="dotted"><hr /></td><td class="dep-version">0.0.6</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#remix.core">remix.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#remix.core" name="remix.core"><h1 class="project-name">remix.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns remix.core
-  (:require [clojure.string :as s]))</pre></td></tr><tr><td class="docs"><p>An experiment in frequency analysis and generation.
+  (:require [clojure.string :as s]
+            [sosueme.io :as io]))</pre></td></tr><tr><td class="docs"><p>An experiment in frequency analysis and generation.
 Read in a file of words, break them up by eg syllables,
 and remix the syllables into new words of similar length.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>General file and line reading</h2>
 </td><td class="codes"><pre class="brush: clojure">(defn read-lines [uri]
-  (-&gt; uri slurp s/split-lines))</pre></td></tr><tr><td class="docs">
+  (-&gt; uri io/slurp-cp s/split-lines))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn cleanup-lines [lines]
   (let [comment? #(= (first %) \;)]
     (remove comment?
             (map s/trim lines))))</pre></td></tr><tr><td class="docs"><p>Return a (possibly empty) lazy sequence of tokens of str.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn tokenize
   [str]
-  (sequence (re-seq #&quot;\w+&quot; str)))</pre></td></tr><tr><td class="docs"><p>FIXME -- detect that this is unused!!!!</p>
-</td><td class="codes"><pre class="brush: clojure">(defn tokenize-lines
-  ([lines] (tokenize-lines tokenize))
-  ([lines line-tokenizer] (mapcat line-tokenizer lines)))</pre></td></tr><tr><td class="docs"><p>Reads in first word of every line of uri (a file or a url -- anything that can be slurped)</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read-words
+  (sequence (re-seq #&quot;\w+&quot; str)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- read-words*
   [uri]
   (let [first-word  #(first (tokenize %))
         keep-first-words #(keep first-word %)]
-    (-&gt; uri read-lines cleanup-lines keep-first-words)))</pre></td></tr><tr><td class="docs"><p>Split after any vowel if there is another vowel later in the word (y is treated as a vowel)</p>
+    (-&gt; uri read-lines cleanup-lines keep-first-words)))</pre></td></tr><tr><td class="docs"><p>Reads in first word of every line of uri (a file or a url -- anything that can be slurped)</p>
 
-<p>FIXME -- this is far from accurate
+<p>TODO: if memory usage becomes a concern, can
+use something like core.memoize</p>
+</td><td class="codes"><pre class="brush: clojure">(def read-words
+  (memoize read-words*))</pre></td></tr><tr><td class="docs"><p>FIXME -- this is far from accurate
 Here are some resources:</p>
 
 <ul>
@@ -3063,12 +3064,18 @@ Here are some resources:</p>
 </ul>
 </td><td class="codes"><pre class="brush: clojure">(defn split-by-syllables
   [word]
-  ;; These may be handy for splitting on syllables:
-  ;;
-  ;; - vowels: aeiouy
-  ;; - consonants: bcdfghjklmnpqrstvwxz
-  (s/split word #&quot;(?i)(?&lt;=[aeiouy])(?=.*[aeiouy])&quot;))</pre></td></tr><tr><td class="docs"><p>A joiner for remixing words</p>
-</td><td class="codes"><pre class="brush: clojure">(def  join-syllables s/join)</pre></td></tr><tr><td class="docs"><p>"Remix" existing items into fanciful new ones. To  remix something, you need:</p>
+  ;; TODO: handle prefix, suffix
+  ;; eg prefix: (?&lt;=^(?:pre|un|dis|re|mis|im|bi|de)) (?=.*[aeiouy])
+  (s/split word #&quot;(?xi)
+    (
+        # divide before a middle consonant but
+        # don't split off final e in eg ice
+    (?&lt;=[aeiouy])
+     (?=[^aeiouy](?:[aiouy]|e.))|
+        # split on multiple consonants right before last one
+    (?&lt;=[aeiouy][^aeiouy]{1,4})
+     (?=[^aeiouy](?:[aiouy]|e.)))&quot;))</pre></td></tr><tr><td class="docs"><p>A joiner for remixing words</p>
+</td><td class="codes"><pre class="brush: clojure">(def join-syllables  s/join)</pre></td></tr><tr><td class="docs"><p>"Remix" existing items into fanciful new ones. To remix something, you need:</p>
 
 <ul>
 <li>input items</li>
@@ -3101,21 +3108,32 @@ Here are some resources:</p>
        (nth (rand-nth pieces-seq) k nil)))})</pre></td></tr><tr><td class="docs"><p>A remixer for the words domain. Assumes we're remixing proper nouns, so capitalizes the output.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn remix-words
   [words-in remixer]
-  (s/capitalize (remix words-in split-by-syllables remixer join-syllables)))</pre></td></tr><tr><td class="docs"><p>Presentation utility to print the result of running n times the
+  (s/capitalize (remix words-in split-by-syllables remixer join-syllables)))</pre></td></tr><tr><td class="docs"><h2>Sample datasets</h2>
+</td><td class="codes"><pre class="brush: clojure">(def wordsets [:hawaiian-places :boys-names :girls-names])</pre></td></tr><tr><td class="docs"><p>See /data/README.md for data sources</p>
+</td><td class="codes"><pre class="brush: clojure">(def word-files
+  (let [full-path #(str &quot;data/&quot; (name %) &quot;.txt&quot;)]
+    (into {} (for [ws wordsets] [ws (full-path ws)]))))</pre></td></tr><tr><td class="docs"><p>Return a new word for the specified dataset, taking an
+   optional remixer (defaults to :positional-sampler)</p>
+</td><td class="codes"><pre class="brush: clojure">(defn new-word
+  ([dataset-name]
+     (new-word dataset-name :positional-sampler))
+  ([dataset-name remixer-name]
+     (let [uri (if (keyword? dataset-name)
+                 (dataset-name word-files))]
+       (remix-words (read-words uri)
+                    (remixer-name remixers)))))</pre></td></tr><tr><td class="docs"><p>Presentation utility to print the result of running n times the
    no-args function f</p>
 </td><td class="codes"><pre class="brush: clojure">(defn print-n
   [n f]
-  (dorun (map println (repeatedly n f))))</pre></td></tr><tr><td class="docs"><h2>Sample datasets</h2>
-</td><td class="codes"><pre class="brush: clojure">(def wordsets [:hawaiian-places :boys-names :girls-names])</pre></td></tr><tr><td class="docs"><p>See /data/README.md for data sources</p>
-</td><td class="codes"><pre class="brush: clojure">(def word-files
-  (let [full-path #(str (first (s/split *file* #&quot;/src/&quot; 2)) &quot;/data/&quot; (name %) &quot;.txt&quot;)]
-    (into {} (for [ws wordsets] [ws (full-path ws)]))))</pre></td></tr><tr><td class="docs"><p>Print n remixes of items from dataset-name</p>
-</td><td class="codes"><pre class="brush: clojure">(defn print-remixes
-  [n dataset-name remixer-name]
-  (print-n n #(remix-words (read-words (dataset-name word-files))
-                           (remixer-name remixers))))</pre></td></tr><tr><td class="docs">
+  (dotimes [_ n] (println (f))))</pre></td></tr><tr><td class="docs"><p>Print n remixes of items from dataset-name</p>
+</td><td class="codes"><pre class="brush: clojure">(defn print-new-words
+  ([n &amp; args]
+     (print-n n #(apply new-word args))))</pre></td></tr><tr><td class="docs"><h2>Sample Invocations</h2>
 </td><td class="codes"><pre class="brush: clojure">(comment
-  (print-remixes 20 :hawaiian-places :positional-sampler)
-  (print-remixes 20 :boys-names :positional-sampler)
-  (print-remixes 20 :girls-names :positional-sampler))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (new-word :hawaiian-places)
+  (new-word :boys-names)
+  (new-word :girls-names)
+  (print-new-words 20 :hawaiian-places)
+  (print-new-words 20 :boys-names)
+  (print-new-words 20 :girls-names :positional-sampler))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>
