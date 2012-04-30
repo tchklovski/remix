@@ -8,8 +8,6 @@
 
 ;; ## General file and line reading
 (defn read-lines [uri]
-  ;; uncomment the println to see how often a full reprocess is done
-  ;;(println "***read-lines slurp uri" uri)
   (-> uri io/slurp-cp s/split-lines))
 
 (defn cleanup-lines [lines]
@@ -22,12 +20,15 @@
   [str]
   (sequence (re-seq #"\w+" str)))
 
-(defn read-words
-  "Reads in first word of every line of uri (a file or a url -- anything that can be slurped)"
+(defn- read-words*
   [uri]
   (let [first-word  #(first (tokenize %))
         keep-first-words #(keep first-word %)]
     (-> uri read-lines cleanup-lines keep-first-words)))
+
+(def read-words
+  "Reads in first word of every line of uri (a file or a url -- anything that can be slurped)"
+  (memoize read-words*))
 
 ;; FIXME -- this is far from accurate
 ;; Here are some resources:
@@ -36,18 +37,24 @@
 ;; - [syllable dictionary](http://www.languagebits.com/books-and-references/)
 ;; - [python dict search](http://www.languagebits.com/phonetics-english/fonrye-english-phonetic-syllable-dictionary-search/)
 (defn split-by-syllables
-  "Split after any vowel if there is another vowel later in the word (y is treated as a vowel)"
   [word]
-  ;; These may be handy for splitting on syllables:
-  ;;
-  ;; - vowels: aeiouy
-  ;; - consonants: bcdfghjklmnpqrstvwxz
-  (s/split word #"(?i)(?<=[aeiouy])(?=.*[aeiouy])"))
+  ;; TODO: handle prefix, suffix
+  ;; eg prefix: (?<=^(?:pre|un|dis|re|mis|im|bi|de)) (?=.*[aeiouy])
+  (s/split word #"(?xi)
+    (
+        # divide before a middle consonant but
+        # don't split off final e in eg ice
+    (?<=[aeiouy])
+     (?=[^aeiouy](?:[aiouy]|e.))|
+        # split on multiple consonants right before last one
+    (?<=[aeiouy][^aeiouy]{1,4})
+     (?=[^aeiouy](?:[aiouy]|e.))
+    )"))
 
-(def ^{:doc "A joiner for remixing words"} join-syllables s/join)
+(def join-syllables "A joiner for remixing words" s/join)
 
 (defn remix
-  "\"Remix\" existing items into fanciful new ones. To  remix something, you need:
+  "\"Remix\" existing items into fanciful new ones. To remix something, you need:
 
 - input items
 - a splitter to map each to a sequence of pieces
