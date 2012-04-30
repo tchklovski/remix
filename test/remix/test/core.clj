@@ -38,5 +38,15 @@
        ;; "sportscar" ["sports" "car"]
        ))
 
+;; since remixing is probabilistic, we feed
+;; it repetative or small sequences to get
+;; repreatable behavior
+(deftest test-remixers
+  (are [remixer in out]
+       (= ((remixers remixer) in) out)
+       :uniform-sampler [[:a]] [:a]
+       :uniform-sampler [[:a :a] [:a :a]] [:a :a]
+       :positional-sampler [[:a :b] [:a :b]] [:a :b]))
+
 (deftest test-new-word
   (is (string? (new-word :hawaiian-places))))
