@@ -1,14 +1,25 @@
 (ns remix.core
+  "An experiment in frequency analysis and generation.
+   Remix items to create a novel one."
+  ^{:author "Tim Chlkovski, Aaron Crow"}
   (:require [clojure.string :as s]
             [sosueme.io :as io]))
 
-;; An experiment in frequency analysis and generation.
-;; Read in a file of words, break them up by eg syllables,
-;; and remix the syllables into new words of similar length.
+(defn slurp*
+  "Slurp more robustly, falling back on looking on classpath"
+  [uri]
+  (try
+    (slurp uri)
+    (catch java.io.IOException _
+      (or (io/slurp-cp uri)
+          (throw (java.io.FileNotFoundException.
+                  (str "could not find directly or on path: "
+                       uri)))))))
 
 ;; ## General file and line reading
+
 (defn read-lines [uri]
-  (-> uri io/slurp-cp s/split-lines))
+  (-> uri slurp* s/split-lines))
 
 (defn cleanup-lines [lines]
   (let [comment? #(= (first %) \;)]
@@ -26,6 +37,8 @@
         keep-first-words #(keep first-word %)]
     (-> uri read-lines cleanup-lines keep-first-words)))
 
+;; TODO: if memory usage becomes a concern, can
+;; use something like core.memoize
 (def read-words
   "Reads in first word of every line of uri (a file or a url -- anything that can be slurped)"
   (memoize read-words*))
@@ -102,12 +115,15 @@
 
 (defn new-word
   "Return a new word for the specified dataset, taking an
-   optinal remixer (defaults to :positional-sampler)"
+   optional remixer (defaults to :positional-sampler)"
   ([dataset-name]
      (new-word dataset-name :positional-sampler))
   ([dataset-name remixer-name]
-     (remix-words (read-words (dataset-name word-files))
-                  (remixer-name remixers))))
+     (let [uri (if (keyword? dataset-name)
+                 (dataset-name word-files)
+                 dataset-name)]
+       (remix-words (read-words uri)
+                    (remixer-name remixers)))))
 
 (defn print-n
   "Presentation utility to print the result of running n times the
@@ -120,10 +136,13 @@
   ([n & args]
      (print-n n #(apply new-word args))))
 
+;; ## Sample Invocations
 (comment
   (new-word :hawaiian-places)
   (new-word :boys-names)
   (new-word :girls-names)
+  (new-word "../../resources/data/hawaiian-places.txt")
+  (new-word "http://...")
   (print-new-words 20 :hawaiian-places)
   (print-new-words 20 :boys-names)
   (print-new-words 20 :girls-names :positional-sampler))
